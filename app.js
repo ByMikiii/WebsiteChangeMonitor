@@ -7,13 +7,12 @@ const app = express();
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({extended: true}));
 app.set('view engine', 'ejs');
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 var oldBody;
-var appIsRunning = true;
 var i = 1;
 
 const urlToCheck = ``;
-const checkingFrequency = 0.5 * 60000;
+const checkingFrequency = 60000 * 0.3; //minutes
 
 //SLACK
 const SLACK_WEBHOOK_URL = '';
@@ -21,21 +20,24 @@ const slack = require('slack-notify')(SLACK_WEBHOOK_URL);
 
 function funkcia(){
     request(urlToCheck, function (err, response, body) {
+        var bodyString = String(body);
+        var oldBodyString = String(oldBody);
+        var bodyLength = bodyString.length;
+        var oldBodyLength = oldBodyString.length;
+
+        console.log('Body Length: ' + bodyLength);
+        console.log('oldBody Length: ' + oldBodyLength);
         if (err) {
             console.log(`Request Error - ${err}`);
         }
         else {
-            //if the target-page content is empty
             if (!body) {
                 console.log(`Request Body Error - ${err}`);
             }
-            //if the request is successful
             else {
-
-                //if any elementsToSearchFor exist
-                if (body != oldBody && i != 1) {
+                if (bodyLength != oldBodyLength && i != 1) {
                     
-                    for (var j = 0; j < 50; j++) {
+                    for (var j = 0; j < 10; j++) {
                         slack.alert(`🔥🔥🔥  <${urlToCheck}/|Change detected in ${urlToCheck}>  🔥🔥🔥 `, function (err) {
                             if (err) {
                                 console.log('Slack API error:', err);
@@ -43,31 +45,34 @@ function funkcia(){
                                 console.log('Message received in slack!');
                             }
                         });
-
-                
                     }
                 } else {
-                    console.log("nic");
+                    console.log("Ziadna zmena!");
                 }
-
             }
         }
-        
         oldBody = body;
         i = 2;
-        setTimeout(funkcia, 1000 * 5);
+        setTimeout(funkcia, checkingFrequency);
     })
 };
 
-//Index page render
+
+//Page render
 app.get('/', function (req, res) {
     res.render('index', null);
 });
 
-
-//Server start
+//On Start
 app.listen(PORT, function () {
-    console.log(`Example app listening on port ${PORT}!`);
+    console.log(`App started, listening on port ${PORT}!`);
+    slack.alert(` <${urlToCheck}/|App started monitoring ${urlToCheck}> `, function (err) {
+        if (err) {
+            console.log('Slack API error:', err);
+        } else {
+            console.log('Message received in slack!');
+        }
+    });
     funkcia();
 });
 
